@@ -30,6 +30,8 @@ export default defineConfig({
     plugins: [react(), tailwindcss()],
     build: {
       outDir: 'out/renderer',
+      minify: true,
+      cssMinify: true,
       rollupOptions: { input: { index: resolve(__dirname, 'index.html') } }
     }
   }

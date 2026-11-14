@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { ChevronDown, Code, Copy, Play, ShieldAlert, Square, SquareTerminal } from 'lucide-react'
+import { ChevronDown, Code, Copy, Play, ShieldAlert, Square, SquareTerminal, Star } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { CommandDef, ParamValues } from '@shared/types'
 import { defaultParams, displayCommand, validateParams } from '@shared/validation'
@@ -26,6 +26,7 @@ const REQ_LABEL: Record<string, string> = {
 
 export function ToolCard({ cmd }: { cmd: CommandDef }) {
   const mode = useSettings((s) => s.mode)
+  const favorite = useSettings((s) => s.favorites.includes(cmd.id))
   const info = useApp((s) => s.info)
   const run = useRuns((s) => s.byKey[cmd.id])
   const { run: start, runElevated, cancel, clear } = useRuns.getState()
@@ -57,6 +58,14 @@ export function ToolCard({ cmd }: { cmd: CommandDef }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-sm font-semibold text-fg">{cmd.name}</h3>
+            <button
+              onClick={() => useSettings.getState().toggleFavorite(cmd.id)}
+              className={clsx('rounded p-0.5', favorite ? 'text-warn' : 'text-muted/50 hover:text-warn')}
+              title={favorite ? 'Remove from favorites' : 'Add to favorites'}
+              aria-pressed={favorite}
+            >
+              <Star className="h-3.5 w-3.5" fill={favorite ? 'currentColor' : 'none'} />
+            </button>
             <RiskBadge risk={cmd.risk} />
             {cmd.admin && <Badge tone={isAdmin ? 'neutral' : 'warn'} title="Requires administrator privileges"><ShieldAlert className="h-3 w-3" />Admin</Badge>}
             {cmd.requires && <Badge title="Requirement">{REQ_LABEL[cmd.requires]}</Badge>}

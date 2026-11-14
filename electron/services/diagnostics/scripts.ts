@@ -4,7 +4,8 @@
 import { AUDIO_TYPE_SCRIPT } from '@shared/repairs'
 import type { DiagnosisId } from '@shared/troubleshoot'
 
-const HEAD = "$ErrorActionPreference = 'SilentlyContinue';"
+// Remove-TypeData: Windows PowerShell 5.1 otherwise serialises some arrays as {"value": [...], "Count": n}.
+const HEAD = "$ErrorActionPreference = 'SilentlyContinue'; Remove-TypeData System.Array -ErrorAction SilentlyContinue;"
 
 const NETWORK = `${HEAD}
 $cfg = @(Get-NetIPConfiguration | Where-Object { $_.NetAdapter.Status -eq 'Up' } | ForEach-Object {

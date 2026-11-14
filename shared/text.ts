@@ -8,8 +8,21 @@ const ANSI = /\u001b\[[0-9;?]*[ -/]*[@-~]|\u001b\][^\u0007]*(\u0007|\u001b\\)/g
  * (progress spinners redraw a line with \r) and backspaces, and drop other
  * control characters.
  */
+/** Convert PowerShell CLIXML error output (written to stderr by powershell.exe) into plain text. */
+export function decodeClixml(text: string): string {
+  if (!text.includes('#< CLIXML')) return text
+  return text.replace(/#< CLIXML\r?\n?/g, '').replace(/<Objs[^>]*>([\s\S]*?)<\/Objs>/g, (_m, body: string) =>
+    [...body.matchAll(/<S S="[^"]*">([\s\S]*?)<\/S>/g)]
+      .map((x) => x[1])
+      .join('')
+      .replace(/_x000D__x000A_/g, '\n')
+      .replace(/_x([0-9A-F]{4})_/g, (_n, hex: string) => String.fromCharCode(parseInt(hex, 16)))
+      .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&')
+  )
+}
+
 export function cleanOutput(text: string): string {
-  const noAnsi = text.replace(ANSI, '')
+  const noAnsi = decodeClixml(text).replace(ANSI, '')
   const lines = noAnsi.replace(/\r\n/g, '\n').split('\n')
   return lines
     .map((line) => {

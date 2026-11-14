@@ -2,33 +2,11 @@ import clsx from 'clsx'
 import { ChevronDown, Columns2, Plus, Rows2, SquareTerminal, X } from 'lucide-react'
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { Group, Panel, Separator } from 'react-resizable-panels'
-import type { TerminalProfile } from '@shared/types'
 import { Button } from '@/components/ui'
 import { useApp } from '@/stores/app'
-import { useSettings } from '@/stores/settings'
 import { MAX_PANES, useTerminals } from '@/stores/terminal'
 import { TerminalPane } from './TerminalPane'
-
-let profilesCache: Promise<TerminalProfile[]> | null = null
-export function getProfiles(): Promise<TerminalProfile[]> {
-  profilesCache ??= window.nexterm.terminal.profiles()
-  return profilesCache
-}
-
-export function useProfiles(): TerminalProfile[] {
-  const [profiles, setProfiles] = useState<TerminalProfile[]>([])
-  useEffect(() => {
-    void getProfiles().then(setProfiles)
-  }, [])
-  return profiles
-}
-
-export async function openDefaultTerminal(): Promise<void> {
-  const profiles = await getProfiles()
-  const pref = useSettings.getState().defaultProfile
-  const p = profiles.find((x) => x.id === pref) ?? profiles[0]
-  if (p) useTerminals.getState().openTab({ profileId: p.id, title: p.name })
-}
+import { openDefaultTerminal, useProfiles } from './profiles'
 
 export function TerminalWorkspace() {
   const visible = useApp((s) => s.page === 'terminal')

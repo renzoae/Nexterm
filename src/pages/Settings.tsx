@@ -1,7 +1,7 @@
 import { FolderOpen, RefreshCw } from 'lucide-react'
 import { DASHBOARD_WIDGETS, useSettings, type TerminalThemeId } from '@/stores/settings'
 import { TERMINAL_THEMES } from '@/features/terminal/themes'
-import { useProfiles } from '@/features/terminal/TerminalWorkspace'
+import { useProfiles } from '@/features/terminal/profiles'
 import { Badge, Button, Card, Field, PageHeader, Spinner, inputCls } from '@/components/ui'
 import { useAsync } from '@/hooks/useAsync'
 import { useApp } from '@/stores/app'

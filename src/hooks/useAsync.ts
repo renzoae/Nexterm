@@ -29,7 +29,7 @@ export function useAsync<T>(fn: () => Promise<T>, opts: { intervalMs?: number; e
     if (!enabled) return
     void reload()
     if (!intervalMs) return
-    const t = setInterval(() => void reload(), intervalMs)
+    const t = setInterval(() => { if (!document.hidden) void reload() }, intervalMs)
     return () => clearInterval(t)
   }, [enabled, intervalMs, reload])
 

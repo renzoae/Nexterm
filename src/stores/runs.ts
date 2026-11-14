@@ -92,7 +92,8 @@ export const useRuns = create<RunsStore>()((set, get) => ({
       const cur = s.byKey[key]
       if (!cur || cur.runId !== runId) return s
       const status: RunStatus = cancelled ? 'cancelled' : error || code !== 0 ? 'failed' : 'success'
-      const message = error ? error : cancelled ? 'Cancelled' : cur.message
+      const elevatedFailed = status === 'failed' && cur.message?.startsWith('Elevated')
+      const message = error ? error : cancelled ? 'Cancelled' : elevatedFailed ? 'The elevated window did not open (the UAC prompt was declined or failed).' : cur.message
       return { byKey: { ...s.byKey, [key]: { ...cur, status, exitCode: code, durationMs, message } } }
     })
   }

@@ -52,3 +52,11 @@ describe('output cleaning', () => {
     expect(decodeOutput(new Uint8Array(Buffer.from('héllo', 'utf8')))).toBe('héllo')
   })
 })
+
+describe('CLIXML decoding', () => {
+  it('turns PowerShell CLIXML errors into text', async () => {
+    const { cleanOutput } = await import('@shared/text')
+    const raw = '#< CLIXML\r\n<Objs Version="1.1.0.1" xmlns="http://schemas.microsoft.com/powershell/2004/04"><S S="Error">Import-Module : The module &apos;X&apos; was not found_x000D__x000A_</S><S S="Error">At line:1_x000D__x000A_</S></Objs>'
+    expect(cleanOutput(raw)).toBe("Import-Module : The module 'X' was not found\nAt line:1\n")
+  })
+})

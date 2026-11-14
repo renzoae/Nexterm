@@ -1,133 +1,178 @@
 import clsx from 'clsx'
-import { Cpu, Globe, HardDrive, MemoryStick, Monitor, Settings2, SquareTerminal, Zap } from 'lucide-react'
-import { useState } from 'react'
-import { getCommand } from '@shared/commands'
-import { ToolCard } from '@/components/ToolCard'
+import { AlertTriangle, CheckCircle2, Cpu, Globe, HardDrive, MemoryStick, Monitor, RefreshCw, Rocket, ScrollText, Settings2, ShieldCheck } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
 import { Sparkline } from '@/components/Sparkline'
 import { Badge, Button, Card, ErrorNote, Meter, PageHeader, Spinner } from '@/components/ui'
-import { openDefaultTerminal } from '@/features/terminal/TerminalWorkspace'
 import { useAsync } from '@/hooks/useAsync'
 import { useLiveMetrics } from '@/hooks/useLiveMetrics'
 import { formatBytes, formatUptime, pct } from '@/lib/format'
 import { useApp } from '@/stores/app'
 import { DASHBOARD_WIDGETS, useSettings, type DashboardWidget } from '@/stores/settings'
 
-const WIDGET_LABEL: Record<DashboardWidget, string> = {
-  system: 'System', cpu: 'CPU', memory: 'Memory', network: 'Network', disks: 'Disks', quick: 'Quick fixes'
+const LABEL: Record<DashboardWidget, string> = {
+  cpu: 'Processor', memory: 'Memory', network: 'Network', updates: 'Windows Update', errors: 'System errors', disks: 'Storage', startup: 'Startup apps', system: 'Device'
 }
 
-const QUICK = ['net.flushdns', 'net.ping', 'net.ipconfig-all', 'win.services-failed']
+type Tone = 'ok' | 'warn' | 'fail' | 'none'
 
+function Tile({ icon, title, tone, value, children, fix, onFix }: { icon: ReactNode; title: string; tone: Tone; value?: ReactNode; children?: ReactNode; fix?: string; onFix?: () => void }) {
+  return (
+    <Card className={clsx(tone === 'fail' && 'border-danger/40', tone === 'warn' && 'border-warn/40')}>
+      <div className="mb-2 flex items-center gap-2">
+        {icon}
+        <span className="text-sm font-semibold text-fg">{title}</span>
+        {tone === 'ok' && <CheckCircle2 className="ml-auto h-4 w-4 text-ok" />}
+        {(tone === 'warn' || tone === 'fail') && <AlertTriangle className={clsx('ml-auto h-4 w-4', tone === 'fail' ? 'text-danger' : 'text-warn')} />}
+        {value !== undefined && <span className={clsx('font-mono text-lg font-semibold text-fg', tone !== 'none' && 'ml-2')}>{value}</span>}
+      </div>
+      {children}
+      {fix && onFix && (tone === 'warn' || tone === 'fail') && (
+        <Button size="sm" variant="primary" className="mt-3" onClick={onFix}>{fix}</Button>
+      )}
+    </Card>
+  )
+}
+
+/** Health Center: only actionable information, with a link to the matching guided fix. */
 export function Dashboard() {
-  const { widgets, toggleWidget, mode } = useSettings()
+  const { widgets, toggleWidget } = useSettings()
   const info = useApp((s) => s.info)
-  const setPage = useApp((s) => s.setPage)
+  const openProblem = useApp((s) => s.openProblem)
   const [customize, setCustomize] = useState(false)
   const overview = useAsync(() => window.nexterm.system.overview())
-  const net = useAsync(() => window.nexterm.system.network(), { intervalMs: 30000 })
-  const { live, cpuHistory, memHistory, error: liveErr } = useLiveMetrics()
+  const net = useAsync(() => window.nexterm.system.network())
+  const health = useAsync(() => window.nexterm.troubleshoot.health())
+  const { live, cpuHistory, memHistory } = useLiveMetrics()
   const o = overview.data
+  const h = health.data && !('error' in health.data) ? health.data : null
   const show = (w: DashboardWidget) => widgets.includes(w)
   const primary = net.data?.adapters.find((a) => a.isDefault) ?? net.data?.adapters.find((a) => a.operstate === 'up')
+  const memPct = live ? pct(live.memUsed, live.memTotal) : 0
+  const sysDisk = o?.disks.find((d) => /^c:?$/i.test(d.mount) || d.mount === '/') ?? o?.disks[0]
+  const sysFree = sysDisk ? 100 - pct(sysDisk.used, sysDisk.size) : 100
+  const refresh = () => { void overview.reload(); void net.reload(); void health.reload() }
+
+  const attention = [
+    live && live.cpuLoad >= 85,
+    memPct >= 90,
+    net.data && (!net.data.internet.reachable || !net.data.dnsResolution.ok),
+    h && (h.failedUpdates30d > 0 || h.wuDisabled > 0 || h.rebootPending),
+    sysFree < 10,
+    h && h.startupCount > 15
+  ].filter(Boolean).length
 
   return (
     <div>
       <PageHeader
-        title={o ? `Hello, ${o.user}` : 'Dashboard'}
-        description={o ? `${o.hostname} · ${o.os.distro} ${o.os.release}` : 'Live information read from this computer'}
+        title="Health Center"
+        description={o ? `${o.os.distro} ${o.os.release} · up ${formatUptime(live?.uptimeSec ?? o.uptimeSec)} · ${info?.isAdmin ? 'administrator' : 'standard user'}` : 'Live information from this PC'}
         actions={
           <>
-            {mode === 'advanced' && <Button onClick={() => { setPage('terminal'); void openDefaultTerminal() }} icon={<SquareTerminal className="h-4 w-4" />}>New terminal</Button>}
+            <Button onClick={refresh} disabled={health.loading || net.loading} icon={health.loading || net.loading ? <Spinner /> : <RefreshCw className="h-4 w-4" />}>Refresh</Button>
             <Button variant="ghost" onClick={() => setCustomize((v) => !v)} icon={<Settings2 className="h-4 w-4" />}>Customize</Button>
           </>
         }
       />
       {customize && (
-        <Card className="mb-4" title="Dashboard widgets" subtitle="Choose what appears on your dashboard">
+        <Card className="mb-4" title="Show on Health Center">
           <div className="flex flex-wrap gap-2">
             {DASHBOARD_WIDGETS.map((w) => (
               <label key={w} className="flex cursor-pointer items-center gap-2 rounded-md border border-line px-3 py-1.5 text-sm">
-                <input type="checkbox" checked={show(w)} onChange={() => toggleWidget(w)} className="accent-[var(--accent)]" /> {WIDGET_LABEL[w]}
+                <input type="checkbox" checked={show(w)} onChange={() => toggleWidget(w)} className="accent-[var(--accent)]" /> {LABEL[w]}
               </label>
             ))}
           </div>
         </Card>
       )}
+
+      <div className={clsx('mb-4 flex items-center gap-3 rounded-lg border px-4 py-3', attention ? 'border-warn/40 bg-warn/10' : 'border-ok/40 bg-ok/10')}>
+        {attention ? <AlertTriangle className="h-5 w-5 text-warn" /> : <ShieldCheck className="h-5 w-5 text-ok" />}
+        <div className="text-sm text-fg">{health.loading && !h ? 'Checking health…' : attention ? `${attention} thing(s) need attention. Use the buttons below to fix them step by step.` : 'Nothing needs attention right now.'}</div>
+      </div>
       {overview.error && <ErrorNote>Could not read system information: {overview.error}</ErrorNote>}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {show('system') && (
-          <Card title={<span className="flex items-center gap-2"><Monitor className="h-4 w-4 text-accent" />System</span>}>
-            {o ? (
-              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs">
-                <dt className="text-muted">OS</dt><dd className="truncate text-fg" title={o.os.distro}>{o.os.distro}</dd>
-                <dt className="text-muted">Build</dt><dd className="text-fg">{o.os.build || o.os.release} ({o.os.arch})</dd>
-                <dt className="text-muted">Uptime</dt><dd className="text-fg">{formatUptime(live?.uptimeSec ?? o.uptimeSec)}</dd>
-                <dt className="text-muted">Privileges</dt><dd>{info?.isAdmin ? <Badge tone="warn">Administrator</Badge> : <Badge>Standard user</Badge>}</dd>
-              </dl>
-            ) : <Spinner />}
-          </Card>
-        )}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {show('cpu') && (
-          <Card title={<span className="flex items-center gap-2"><Cpu className="h-4 w-4 text-accent" />CPU</span>} actions={live && <span className="font-mono text-lg font-semibold text-fg">{live.cpuLoad.toFixed(0)}%</span>}>
-            <p className="mb-2 truncate text-xs text-muted" title={o?.cpu.brand}>{o ? `${o.cpu.manufacturer} ${o.cpu.brand} · ${o.cpu.physicalCores}C/${o.cpu.cores}T` : '…'}</p>
+          <Tile icon={<Cpu className="h-4 w-4 text-accent" />} title="Processor" tone={!live ? 'none' : live.cpuLoad >= 85 ? 'warn' : 'ok'} value={live ? `${live.cpuLoad.toFixed(0)}%` : undefined} fix="Find what is slowing the PC" onFix={() => openProblem('slow')}>
             <Sparkline values={cpuHistory} />
-            {liveErr && <p className="text-xs text-danger">{liveErr}</p>}
-          </Card>
+          </Tile>
         )}
         {show('memory') && (
-          <Card title={<span className="flex items-center gap-2"><MemoryStick className="h-4 w-4 text-accent" />Memory</span>} actions={live && <span className="font-mono text-lg font-semibold text-fg">{pct(live.memUsed, live.memTotal)}%</span>}>
-            <p className="mb-2 text-xs text-muted">{live ? `${formatBytes(live.memUsed)} used of ${formatBytes(live.memTotal)}` : '…'}</p>
+          <Tile icon={<MemoryStick className="h-4 w-4 text-accent" />} title="Memory" tone={!live ? 'none' : memPct >= 90 ? 'fail' : memPct >= 80 ? 'warn' : 'ok'} value={live ? `${memPct}%` : undefined} fix="Find what uses memory" onFix={() => openProblem('slow')}>
+            <p className="mb-1 text-xs text-muted">{live ? `${formatBytes(live.memUsed)} of ${formatBytes(live.memTotal)} in use` : '…'}</p>
             <Sparkline values={memHistory} />
-          </Card>
+          </Tile>
         )}
         {show('network') && (
-          <Card
-            title={<span className="flex items-center gap-2"><Globe className="h-4 w-4 text-accent" />Network</span>}
-            actions={net.data && <Badge tone={net.data.internet.reachable ? 'ok' : 'danger'}>{net.data.internet.reachable ? 'Online' : 'Offline'}</Badge>}
-          >
+          <Tile icon={<Globe className="h-4 w-4 text-accent" />} title="Network" tone={!net.data ? 'none' : !net.data.internet.reachable ? 'fail' : !net.data.dnsResolution.ok ? 'fail' : 'ok'} fix="Troubleshoot the connection" onFix={() => openProblem('internet')}>
             {net.data ? (
-              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs">
-                <dt className="text-muted">Adapter</dt><dd className="truncate text-fg">{primary?.iface ?? '—'}</dd>
-                <dt className="text-muted">IPv4</dt><dd className="selectable font-mono text-fg">{primary?.ip4 || '—'}</dd>
-                <dt className="text-muted">Gateway</dt><dd className="selectable font-mono text-fg">{net.data.defaultGateway || '—'}</dd>
-                <dt className="text-muted">Latency</dt><dd className="text-fg">{net.data.internet.latencyMs != null ? `${net.data.internet.latencyMs} ms (TCP to ${net.data.internet.target})` : 'No response'}</dd>
+              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+                <dt className="text-muted">Internet</dt><dd className="text-fg">{net.data.internet.reachable ? `Online, ${net.data.internet.latencyMs} ms` : 'Offline'}</dd>
+                <dt className="text-muted">DNS</dt><dd className="text-fg">{net.data.dnsResolution.ok ? 'Working' : 'Failing'}</dd>
+                <dt className="text-muted">Adapter</dt><dd className="truncate text-fg">{primary ? `${primary.iface} · ${primary.ip4 || 'no IPv4'}` : 'None'}</dd>
               </dl>
             ) : net.error ? <p className="text-xs text-danger">{net.error}</p> : <Spinner />}
-          </Card>
+          </Tile>
+        )}
+        {show('updates') && (
+          <Tile icon={<RefreshCw className="h-4 w-4 text-accent" />} title="Windows Update" tone={!h ? 'none' : h.wuDisabled > 0 || h.failedUpdates30d > 0 ? 'fail' : h.rebootPending ? 'warn' : 'ok'} fix="Troubleshoot Windows Update" onFix={() => openProblem('update')}>
+            {h ? (
+              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+                <dt className="text-muted">Last success</dt><dd className="truncate text-fg" title={h.lastUpdate?.title}>{h.lastUpdate ? new Date(h.lastUpdate.date).toLocaleDateString() : h.historyError ? 'Unavailable' : 'None recorded'}</dd>
+                <dt className="text-muted">Failed (30 d)</dt><dd className={clsx(h.failedUpdates30d ? 'text-danger' : 'text-fg')}>{h.failedUpdates30d}</dd>
+                <dt className="text-muted">Restart</dt><dd className="text-fg">{h.rebootPending ? 'Pending' : 'Not needed'}</dd>
+                {h.wuDisabled > 0 && <><dt className="text-muted">Services</dt><dd className="text-danger">Disabled</dd></>}
+              </dl>
+            ) : health.data && 'error' in health.data ? <p className="text-xs text-muted">{health.data.error}</p> : <Spinner />}
+          </Tile>
+        )}
+        {show('errors') && (
+          <Tile icon={<ScrollText className="h-4 w-4 text-accent" />} title="System errors (24 h)" tone={!h ? 'none' : h.errors24h > 50 ? 'warn' : 'ok'} value={h ? h.errors24h : undefined} fix="Check failing services" onFix={() => openProblem('services')}>
+            {h ? (
+              h.topErrorSources.length ? (
+                <ul className="space-y-0.5 text-xs">{h.topErrorSources.map((t) => <li key={t.source} className="flex justify-between gap-2"><span className="truncate text-fg">{t.source}</span><span className="text-muted">{t.count}</span></li>)}</ul>
+              ) : <p className="text-xs text-muted">No errors logged.</p>
+            ) : !health.data ? <Spinner /> : <p className="text-xs text-muted">{'error' in health.data ? health.data.error : ''}</p>}
+          </Tile>
+        )}
+        {show('startup') && (
+          <Tile icon={<Rocket className="h-4 w-4 text-accent" />} title="Startup apps" tone={!h ? 'none' : h.startupCount > 15 ? 'warn' : 'ok'} value={h ? h.startupCount : undefined} fix="Speed up startup" onFix={() => openProblem('startup')}>
+            <p className="text-xs text-muted">{health.data && 'error' in health.data ? health.data.error : 'Programs that start when you sign in.'}</p>
+          </Tile>
         )}
       </div>
 
       {show('disks') && (
-        <Card className="mt-4" title={<span className="flex items-center gap-2"><HardDrive className="h-4 w-4 text-accent" />Storage</span>}>
+        <Card className="mt-4" title={<span className="flex items-center gap-2"><HardDrive className="h-4 w-4 text-accent" />Storage</span>}
+          actions={sysFree < 15 && <Button size="sm" variant="primary" onClick={() => openProblem('disk')}>Free up space</Button>}>
           {o ? (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {o.disks.map((d) => {
-                const p = pct(d.used, d.size)
-                return (
-                  <div key={d.mount + d.fs}>
-                    <div className="mb-1 flex justify-between text-xs">
-                      <span className="font-medium text-fg">{d.mount || d.fs} <span className="text-muted">{d.type}</span></span>
-                      <span className="text-muted">{formatBytes(d.size - d.used)} free of {formatBytes(d.size)}</span>
-                    </div>
-                    <Meter value={p} />
+              {o.disks.map((d) => (
+                <div key={d.mount + d.fs}>
+                  <div className="mb-1 flex justify-between text-xs">
+                    <span className="font-medium text-fg">{d.mount || d.fs} <span className="text-muted">{d.type}</span></span>
+                    <span className="text-muted">{formatBytes(d.size - d.used)} free of {formatBytes(d.size)}</span>
                   </div>
-                )
-              })}
-              {!o.disks.length && <p className="text-xs text-muted">No volumes reported.</p>}
+                  <Meter value={pct(d.used, d.size)} />
+                </div>
+              ))}
             </div>
           ) : <Spinner />}
         </Card>
       )}
 
-      {show('quick') && (
-        <div className="mt-6">
-          <h2 className={clsx('mb-3 flex items-center gap-2 text-sm font-semibold text-fg')}><Zap className="h-4 w-4 text-accent" />Quick fixes &amp; checks</h2>
-          <div className="flex flex-col gap-3">
-            {QUICK.map((id) => getCommand(id)).filter((c) => !!c).map((c) => <ToolCard key={c.id} cmd={c} />)}
-          </div>
-        </div>
+      {show('system') && o && (
+        <Card className="mt-4" title={<span className="flex items-center gap-2"><Monitor className="h-4 w-4 text-accent" />Device</span>}>
+          <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-xs md:grid-cols-2">
+            <div className="flex gap-2"><dt className="w-20 text-muted">Name</dt><dd className="selectable text-fg">{o.hostname}</dd></div>
+            <div className="flex gap-2"><dt className="w-20 text-muted">Windows</dt><dd className="text-fg">{o.os.distro} ({o.os.build || o.os.release})</dd></div>
+            <div className="flex gap-2"><dt className="w-20 text-muted">Processor</dt><dd className="truncate text-fg">{o.cpu.manufacturer} {o.cpu.brand}</dd></div>
+            <div className="flex gap-2"><dt className="w-20 text-muted">Memory</dt><dd className="text-fg">{formatBytes(o.memTotal)}</dd></div>
+          </dl>
+        </Card>
       )}
+      {health.data && 'error' in health.data && info?.isWindows && <p className="mt-3 text-xs text-danger">Health summary failed: {health.data.error}</p>}
+      {!info?.isWindows && <p className="mt-3 text-xs text-muted"><Badge>Note</Badge> Update, error and startup checks are available on Windows.</p>}
     </div>
   )
 }

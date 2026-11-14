@@ -10,7 +10,9 @@ import { formatBytes, formatUptime, pct } from '@/lib/format'
 
 export function Hardware() {
   const overview = useAsync(() => window.nexterm.system.overview())
-  const procs = useAsync(() => window.nexterm.system.processes(), { intervalMs: 5000 })
+  const [autoRefresh, setAutoRefresh] = useState(false)
+  // Listing processes spawns PowerShell on Windows, so it refreshes only on request (or every 10 s if enabled).
+  const procs = useAsync(() => window.nexterm.system.processes(), { intervalMs: autoRefresh ? 10000 : undefined })
   const { live, cpuHistory, memHistory } = useLiveMetrics()
   const [filter, setFilter] = useState('')
   const o = overview.data
@@ -88,10 +90,11 @@ export function Hardware() {
       <Card
         className="mt-4"
         title="Running processes"
-        subtitle="Top 60 by CPU, refreshed every 5 seconds"
+        subtitle={autoRefresh ? "Top 60 by CPU, refreshing every 10 seconds" : "Top 60 by CPU. Click refresh to update."}
         actions={
           <>
             <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter by name or PID" className={`${inputCls} h-7 w-48 text-xs`} />
+            <label className="flex items-center gap-1 text-xs text-muted"><input type="checkbox" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} className="accent-[var(--accent)]" />Auto</label>
             <Button size="sm" variant="ghost" onClick={() => void procs.reload()} icon={<RefreshCw className="h-3.5 w-3.5" />} />
           </>
         }

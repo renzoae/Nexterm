@@ -1,9 +1,11 @@
 import clsx from 'clsx'
-import { CornerDownLeft, Search, SquareTerminal, Wrench, type LucideIcon } from 'lucide-react'
+import { CornerDownLeft, LifeBuoy, Search, SlidersHorizontal, SquareTerminal, Wrench, type LucideIcon } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CATEGORIES, COMMANDS } from '@shared/commands'
+import { SETTINGS } from '@shared/settings-catalog'
+import { PROBLEMS } from '@shared/troubleshoot'
 import { NAV } from '@/data/nav'
-import { getProfiles } from '@/features/terminal/TerminalWorkspace'
+import { getProfiles } from '@/features/terminal/profiles'
 import { useApp } from '@/stores/app'
 import { useSettings } from '@/stores/settings'
 import { useTerminals } from '@/stores/terminal'
@@ -68,7 +70,15 @@ export function CommandPalette() {
       keywords: `${c.description} ${c.category} ${c.exec.kind === 'exe' ? c.exec.file : c.exec.kind === 'cmd' ? c.exec.line : c.exec.script.slice(0, 80)}`,
       run: () => { setLibraryQuery(c.name); setPage('library'); if (s.mode === 'easy') s.set({ mode: 'advanced' }); close() }
     }))
-    return [...pages, ...actions, ...terms, ...cmds]
+    const problems: Item[] = PROBLEMS.map((p) => ({
+      id: `problem:${p.id}`, label: `Fix: ${p.title}`, hint: 'Guided troubleshooting', group: 'Problems', icon: LifeBuoy, keywords: `${p.description} fix troubleshoot`,
+      run: () => { useApp.getState().openProblem(p.id); close() }
+    }))
+    const winSettings: Item[] = SETTINGS.map((x) => ({
+      id: `setting:${x.id}`, label: x.title, hint: x.section, group: 'Windows Settings', icon: SlidersHorizontal, keywords: `${x.keywords} settings`,
+      run: () => { void window.nexterm.troubleshoot.openSetting(x.id); close() }
+    }))
+    return [...problems, ...pages, ...actions, ...winSettings, ...terms, ...cmds]
   }, [profiles, setPage, setPalette, setLibraryQuery])
 
   const results = useMemo(

@@ -3,7 +3,7 @@ import type { LiveMetrics } from '@shared/types'
 
 const HISTORY = 60
 
-/** Poll real CPU and memory metrics every 2 seconds and keep a short history. */
+/** Poll real CPU and memory metrics (cheap: read from the OS, no processes spawned) and keep a short history. */
 export function useLiveMetrics() {
   const [live, setLive] = useState<LiveMetrics | null>(null)
   const [cpuHistory, setCpuHistory] = useState<number[]>([])
@@ -30,7 +30,8 @@ export function useLiveMetrics() {
       }
     }
     void tick()
-    const t = setInterval(() => void tick(), 2000)
+    // 3 s while the window is visible; nothing at all while it is minimised or hidden.
+    const t = setInterval(() => { if (!document.hidden) void tick() }, 3000)
     return () => {
       alive = false
       clearInterval(t)

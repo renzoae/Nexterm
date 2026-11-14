@@ -85,7 +85,11 @@ export function overallStatus(findings: Finding[]): OverallStatus {
 /** Normalise PowerShell JSON, where a one-item array may arrive as a bare object. */
 export function arr<T>(v: T | T[] | null | undefined): T[] {
   if (v === null || v === undefined) return []
-  return Array.isArray(v) ? v : [v]
+  if (Array.isArray(v)) return v
+  // Windows PowerShell 5.1 can wrap arrays as { value: [...], Count: n }.
+  const o = v as unknown as { value?: unknown; Count?: unknown }
+  if (typeof o === 'object' && Array.isArray(o.value) && typeof o.Count === 'number') return o.value as T[]
+  return [v]
 }
 
 export function gb(bytes: number): string {

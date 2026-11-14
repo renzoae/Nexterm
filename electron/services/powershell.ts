@@ -10,7 +10,8 @@ export function encodePs(script: string): string {
 
 /** argv for running a script block with formatted text output (streamed line by line). */
 export function psTextArgs(script: string): string[] {
-  const full = `${PRELUDE}& { ${script} } | Out-String -Stream -Width 250`
+  // 2>&1 turns error records into normal text (otherwise powershell.exe writes CLIXML to stderr).
+  const full = `${PRELUDE}& { ${script} } 2>&1 | Out-String -Stream -Width 250`
   return ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', encodePs(full)]
 }
 

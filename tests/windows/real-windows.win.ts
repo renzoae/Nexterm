@@ -35,6 +35,18 @@ function run(file: string, args: string[], timeoutMs: number, env?: Record<strin
 afterAll(() => {
   writeFileSync(join(OUT, 'diagnoses.json'), JSON.stringify(diagnoses, null, 2))
   writeFileSync(join(OUT, 'commands.json'), JSON.stringify(commands, null, 2))
+  // Also print a readable summary into the CI log.
+  const lines: string[] = ['', '===== NEXTERM real-Windows results =====']
+  for (const [id, d] of Object.entries(diagnoses)) {
+    if (!d || !('findings' in d)) { lines.push(`[${id}] ${JSON.stringify(d).slice(0, 600)}`); continue }
+    lines.push(`[${id}] ${d.status.toUpperCase()} in ${d.durationMs} ms: ${d.headline}`, `    cause: ${d.cause}`)
+    for (const f of d.findings) lines.push(`    ${f.status.padEnd(7)} ${f.title} | ${f.detail.slice(0, 160)}`)
+    lines.push(`    actions: ${d.actions.map((a) => (a.kind === 'url' ? a.label : `${a.kind}:${a.id}`)).join(', ')}`)
+    if (d.errors.length) lines.push(`    ERRORS: ${d.errors.join(' | ')}`)
+  }
+  lines.push('', '----- commands -----')
+  for (const c of commands) lines.push(`${c.ok ? 'OK  ' : 'FAIL'} ${c.id.padEnd(28)} exit=${c.exitCode} ${c.ms}ms ${c.note} | ${c.head.split('\n').find((l) => l.trim())?.slice(0, 110) ?? ''}`)
+  console.log(lines.join('\n'))
 })
 
 describe.skipIf(process.platform !== 'win32')('real Windows', () => {
@@ -72,6 +84,11 @@ describe.skipIf(process.platform !== 'win32')('real Windows', () => {
   describe('safe library commands run', () => {
     const safe = COMMANDS.filter((c) => c.risk === 'safe' && !c.longRunning)
     it.each(safe.map((c) => [c.id, c] as const))('%s', async (_id, c) => {
+      if (c.requires === 'domain' || c.requires === 'rsat') {
+        // The app checks domain membership/RSAT before running these; CI runners are not domain-joined.
+        const dom = await run(powershellPath(), ['-NoProfile', '-Command', '(Get-CimInstance Win32_ComputerSystem).PartOfDomain'], 30_000)
+        if (!/true/i.test(dom.out)) { commands.push({ id: c.id, ok: true, exitCode: null, ms: 0, note: 'skipped: not domain-joined', head: '' }); return }
+      }
       const values = defaultParams(c)
       let file: string | null
       let args: string[]

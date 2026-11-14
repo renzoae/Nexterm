@@ -1,37 +1,47 @@
-import { useEffect, type ComponentType } from 'react'
+import { Suspense, lazy, useEffect, useState, type ComponentType, type LazyExoticComponent } from 'react'
 import { CommandPalette } from '@/components/CommandPalette'
+import { Spinner } from '@/components/ui'
 import { NAV, type PageId } from '@/data/nav'
-import { TerminalWorkspace, openDefaultTerminal } from '@/features/terminal/TerminalWorkspace'
+import { openDefaultTerminal } from '@/features/terminal/profiles'
 import { Sidebar } from '@/layouts/Sidebar'
 import { TopBar } from '@/layouts/TopBar'
-import { AIAssistant } from '@/pages/AIAssistant'
-import { ActiveDirectory } from '@/pages/ActiveDirectory'
-import { Dashboard } from '@/pages/Dashboard'
-import { Developer } from '@/pages/Developer'
-import { Hardware } from '@/pages/Hardware'
-import { Library } from '@/pages/Library'
-import { NetworkPage } from '@/pages/Network'
-import { Remote } from '@/pages/Remote'
-import { SettingsPage } from '@/pages/Settings'
-import { Software } from '@/pages/Software'
-import { Toolkit } from '@/pages/Toolkit'
-import { Troubleshooting } from '@/pages/Troubleshooting'
-import { UsersPage } from '@/pages/Users'
+import { FixProblem } from '@/pages/FixProblem'
 import { useApp } from '@/stores/app'
 import { wireRunEvents } from '@/stores/runs'
 import { useSettings } from '@/stores/settings'
 import { useTerminals } from '@/stores/terminal'
 
-const PAGES: Record<Exclude<PageId, 'terminal'>, ComponentType> = {
-  dashboard: Dashboard, toolkit: Toolkit, network: NetworkPage, troubleshooting: Troubleshooting, hardware: Hardware,
-  users: UsersPage, ad: ActiveDirectory, remote: Remote, software: Software, developer: Developer, ai: AIAssistant,
-  library: Library, settings: SettingsPage
+// Pages are code-split and loaded on first visit, which keeps startup fast and memory low.
+const page = <K extends string>(load: () => Promise<Record<K, ComponentType>>, name: K) => lazy(() => load().then((m) => ({ default: m[name] })))
+const PAGES: Record<Exclude<PageId, 'terminal'>, ComponentType | LazyExoticComponent<ComponentType>> = {
+  fix: FixProblem,
+  dashboard: page(() => import('@/pages/Dashboard'), 'Dashboard'),
+  winsettings: page(() => import('@/pages/WindowsSettings'), 'WindowsSettings'),
+  reports: page(() => import('@/pages/Reports'), 'Reports'),
+  toolkit: page(() => import('@/pages/Toolkit'), 'Toolkit'),
+  network: page(() => import('@/pages/Network'), 'NetworkPage'),
+  troubleshooting: page(() => import('@/pages/Troubleshooting'), 'Troubleshooting'),
+  hardware: page(() => import('@/pages/Hardware'), 'Hardware'),
+  users: page(() => import('@/pages/Users'), 'UsersPage'),
+  ad: page(() => import('@/pages/ActiveDirectory'), 'ActiveDirectory'),
+  remote: page(() => import('@/pages/Remote'), 'Remote'),
+  software: page(() => import('@/pages/Software'), 'Software'),
+  developer: page(() => import('@/pages/Developer'), 'Developer'),
+  ai: page(() => import('@/pages/AIAssistant'), 'AIAssistant'),
+  library: page(() => import('@/pages/Library'), 'Library'),
+  settings: page(() => import('@/pages/Settings'), 'SettingsPage')
 }
+// xterm.js and node-pty sessions are only loaded once the terminal is first opened.
+const TerminalWorkspace = lazy(() => import('@/features/terminal/TerminalWorkspace').then((m) => ({ default: m.TerminalWorkspace })))
 
 export function App() {
   const page = useApp((s) => s.page)
   const theme = useSettings((s) => s.theme)
   const mode = useSettings((s) => s.mode)
+  const [terminalUsed, setTerminalUsed] = useState(false)
+  useEffect(() => {
+    if (page === 'terminal') setTerminalUsed(true)
+  }, [page])
 
   useEffect(() => {
     wireRunEvents()
@@ -89,10 +99,16 @@ export function App() {
         <main className="relative min-h-0 flex-1">
           {Page && (
             <div key={page} className="animate-in absolute inset-0 overflow-y-auto p-6">
-              <Page />
+              <Suspense fallback={<Spinner className="h-5 w-5 text-accent" />}>
+                <Page />
+              </Suspense>
             </div>
           )}
-          <TerminalWorkspace />
+          {terminalUsed && (
+            <Suspense fallback={null}>
+              <TerminalWorkspace />
+            </Suspense>
+          )}
         </main>
       </div>
       <CommandPalette />

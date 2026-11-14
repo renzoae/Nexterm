@@ -242,3 +242,10 @@ describe('reports', () => {
     expect(formatDiagnosis(d, 'Internet')).toMatch(/\[OK\]/)
   })
 })
+
+describe('PowerShell 5.1 array wrapping', () => {
+  it('unwraps {value, Count} arrays', () => {
+    const r = interpretHang({ notResponding: [], hangs: { value: [{ app: 'x.exe', count: 2, last: '2026-11-14T10:00:00Z' }], Count: 1 } as never })
+    expect(r.findings.find((f) => f.id === 'hangs')?.detail).toMatch(/x.exe/)
+  })
+})

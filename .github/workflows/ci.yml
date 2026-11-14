@@ -64,6 +64,10 @@ jobs:
         run: |
           npm run build
           npx electron tests/e2e/shots.cjs screenshots
+      - name: Print guided workflow results shown in the UI
+        if: always()
+        shell: pwsh
+        run: Get-ChildItem screenshots/*.txt -ErrorAction SilentlyContinue | ForEach-Object { "===== $($_.Name) ====="; Get-Content $_ -Raw }
       - uses: actions/upload-artifact@v4
         if: always()
         with:

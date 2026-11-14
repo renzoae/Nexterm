@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { commandsIn } from '@shared/commands'
 import { ToolList } from '@/components/ToolCard'
 import { Badge, Button, Card, InfoNote, PageHeader, Spinner } from '@/components/ui'
-import { openDefaultTerminal } from '@/features/terminal/TerminalWorkspace'
+import { openDefaultTerminal } from '@/features/terminal/profiles'
 import { useAsync } from '@/hooks/useAsync'
 import { useApp } from '@/stores/app'
 
