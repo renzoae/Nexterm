@@ -9,9 +9,11 @@
   Free and open source (MIT).
 </p>
 
-NEXTERM combines a modern multi-tab terminal with a one-click library of real Windows diagnostics. **Easy Mode** gives help-desk staff and everyday users plain-language buttons, and **Advanced Mode** gives admins and developers the terminal, raw commands and every tool.
+NEXTERM helps you **fix Windows problems**, not just look at them. Pick what is wrong, for example “Internet not working” or “Windows Update failing”. NEXTERM runs safe, read-only checks, explains the likely cause in plain language, suggests fixes you approve one by one, and then **re-checks to verify** that the problem is actually solved.
 
-> **Status: v0.1 (Phase 1 MVP).** The features listed under “Working now” are implemented. Items marked *planned* are not in this release yet.
+**Easy Mode** shows problem-first pages. **Advanced Mode** adds a modern multi-tab terminal, a library of 85 Windows diagnostics, and technician tools.
+
+> **Status: v0.2.** Every feature is classified in the [feature audit](docs/FEATURE-AUDIT.md), and real-Windows test results are in [UAT](docs/UAT.md). Items marked *planned* are not in this release.
 
 ---
 
@@ -43,7 +45,28 @@ Requirements: Windows 10 1809+ or Windows 11, x64.
 
 ---
 
-## Working now
+## Fix a Problem (guided troubleshooting)
+
+| Problem | What NEXTERM checks (read-only) | Fixes it can offer (you confirm each one) |
+|---|---|---|
+| Internet not working / DNS | Adapter, IP/DHCP, router, internet, DNS (yours vs public), Wi-Fi sign-in pages, proxy | Flush DNS, renew IP, switch to public DNS (with undo), Winsock/TCP-IP reset |
+| Computer running slowly | Busiest programs (2 s sample), memory, free space, HDD vs SSD, startup apps, uptime, power plan | End a specific program, clear temp files, open Startup apps / Storage |
+| Windows Update failing | Update services, update history with error-code explanations, update errors, free space, pending restart | Re-enable or restart update services, reset the update cache (with restore), DISM, SFC |
+| No sound | Audio services, sound hardware, outputs, **mute and volume** | Unmute and raise the volume, restart audio services |
+| Low disk space | Free space per drive, measured sizes of Temp, Recycle Bin, Downloads and the update cache | Clear temp files, empty Recycle Bin, Storage Sense, Disk Cleanup |
+| App not responding | Frozen windows now, crashes and hangs in the last 7 days with the faulting module | End the frozen program, Reliability Monitor |
+| Startup takes too long | Startup programs (enabled/disabled), last boot time, Fast Startup | Startup apps settings, Task Manager startup tab |
+| Printer not working | Print Spooler, printers, offline state, stuck jobs | Restart spooler, clear stuck jobs |
+| Windows service failing | Automatic services that failed (not the ones that stop normally), service errors | Start the service, Services, Event Viewer |
+
+Rules NEXTERM always follows:
+- Checks never change anything.
+- Fixes show their impact, risk, required permission, undo option and exact command, and run only after a confirmation dialog. Admin fixes also go through the Windows UAC prompt.
+- NEXTERM never says a problem is fixed until a re-check passes.
+
+Also new: **Health Center** (only what needs attention, with a fix button), **Windows Settings search** (60 pages, e.g. “change DNS”, “microphone”, “startup apps”), **Support Report** (copy or save; identifying details hidden by default), **troubleshooting history**, and **favorite tools**.
+
+## Everything else
 
 | Area | What works |
 |---|---|
@@ -66,6 +89,7 @@ Requirements: Windows 10 1809+ or Windows 11, x64.
 
 | Phase | Items |
 |---|---|
+| next | Background-free trend for intermittent slowness, Wi-Fi signal diagnosis, CBS.log analysis for failed feature updates, PDF report export |
 | 2 | Session restore, custom terminal profiles, command-history panel |
 | 3 | Event log viewer UI, service start/stop management, SFTP browser, remote PowerShell |
 | 4 | Monaco editor, project explorer, Git operations, **AI assistant** (optional, bring your own key, never auto-executes) |
@@ -106,6 +130,7 @@ npm run dev
 
 # 4. Checks
 npm run check        # typecheck + lint + unit tests
+npm run test:windows # runs every diagnosis and safe command for real on this PC
 
 # 5. Build the installer and portable exe into .\release
 npm run dist:win

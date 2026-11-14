@@ -1,6 +1,6 @@
 {
   "name": "nexterm",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "All-in-one Windows terminal and IT support toolkit. Free and open source.",
   "main": "out/main/index.js",
   "scripts": {
