@@ -8,3 +8,4 @@ Thumbs.db
 .env
 screenshots/
 *.tsbuildinfo
+audit-output/

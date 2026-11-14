@@ -15,5 +15,5 @@
     "composite": true,
     "paths": { "@shared/*": ["./shared/*"] }
   },
-  "include": ["electron/**/*.ts", "shared/**/*.ts", "tests/**/*.ts", "electron.vite.config.ts", "vitest.config.mts"]
+  "include": ["electron/**/*.ts", "shared/**/*.ts", "tests/**/*.ts", "electron.vite.config.ts", "vitest.config.mts", "vitest.windows.config.mts"]
 }

@@ -1,3 +1,4 @@
+import type { Diagnosis, DiagnosisId, TroubleshootHistoryEntry } from './troubleshoot'
 import type {
   AppInfo, ConnectionHistoryEntry, DevTool, DomainStatus, LaunchTool, LiveMetrics, LogEntry, NetworkOverview,
   ParamValues, ProcessInfo, RunExitEvent, RunOutputEvent, RunStartResult, SshProfile, SystemOverview,
@@ -41,8 +42,25 @@ export const CH = {
   logsRead: 'logs:read',
   logsOpenFolder: 'logs:open-folder',
   clipRead: 'clip:read',
-  clipWrite: 'clip:write'
+  clipWrite: 'clip:write',
+  diagRun: 'diag:run',
+  diagHistory: 'diag:history',
+  healthSummary: 'health:summary',
+  settingsOpen: 'settings:open',
+  reportGenerate: 'report:generate',
+  reportSave: 'report:save'
 } as const
+
+export interface HealthSummaryResult {
+  errors24h: number
+  topErrorSources: { source: string; count: number }[]
+  rebootPending: boolean
+  lastUpdate: { title: string; date: string } | null
+  failedUpdates30d: number
+  historyError: string | null
+  startupCount: number
+  wuDisabled: number
+}
 
 export type WingetAction = 'install' | 'upgrade' | 'uninstall'
 
@@ -101,5 +119,13 @@ export interface NexTermApi {
   clipboard: {
     read(): Promise<string>
     write(text: string): Promise<void>
+  }
+  troubleshoot: {
+    run(id: DiagnosisId, afterActions?: string[]): Promise<Diagnosis>
+    history(): Promise<TroubleshootHistoryEntry[]>
+    health(): Promise<HealthSummaryResult | { error: string }>
+    openSetting(id: string): Promise<{ ok: boolean; error?: string }>
+    report(includeIdentity: boolean): Promise<string>
+    saveReport(text: string): Promise<{ ok: boolean; path?: string }>
   }
 }

@@ -25,11 +25,25 @@ export function runPsJson<T>(script: string, timeoutMs = 30000): Promise<T> {
       (err, stdout, stderr) => {
         if (err && !stdout) return reject(new Error(stderr?.toString().trim() || err.message))
         try {
-          resolve(JSON.parse(stdout.toString().trim()) as T)
+          resolve(parsePsJson<T>(stdout.toString()))
         } catch {
-          reject(new Error('Could not parse PowerShell output'))
+          const hint = (stderr?.toString().trim() || stdout.toString().trim()).split('\n').slice(-3).join(' ')
+          reject(new Error(`Could not parse PowerShell output${hint ? `: ${hint.slice(0, 300)}` : ''}`))
         }
       }
     )
   })
+}
+
+/** Parse the JSON document in PowerShell output, ignoring any warning lines printed before it. */
+export function parsePsJson<T>(out: string): T {
+  const text = out.replace(/^\uFEFF/, '').trim()
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    const lines = text.split(/\r?\n/)
+    const start = lines.findIndex((l) => /^[[{]/.test(l.trim()))
+    if (start < 0) throw new Error('No JSON in output')
+    return JSON.parse(lines.slice(start).join('\n')) as T
+  }
 }

@@ -65,6 +65,14 @@ const api: NexTermApi = {
   clipboard: {
     read: () => ipcRenderer.invoke(CH.clipRead),
     write: (text) => ipcRenderer.invoke(CH.clipWrite, text)
+  },
+  troubleshoot: {
+    run: (id, afterActions) => ipcRenderer.invoke(CH.diagRun, id, afterActions ?? []),
+    history: () => ipcRenderer.invoke(CH.diagHistory),
+    health: () => ipcRenderer.invoke(CH.healthSummary),
+    openSetting: (id) => ipcRenderer.invoke(CH.settingsOpen, id),
+    report: (includeIdentity) => ipcRenderer.invoke(CH.reportGenerate, includeIdentity),
+    saveReport: (text) => ipcRenderer.invoke(CH.reportSave, text)
   }
 }
 

@@ -6,6 +6,12 @@ const HOSTNAME = /^(?=.{1,253}$)[A-Za-z0-9](?:[A-Za-z0-9-]{0,62})(?:\.[A-Za-z0-9
 const IPV4 = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/
 const IPV6 = /^[0-9A-Fa-f:.]{2,45}$/
 const DRIVE = /^[A-Za-z]:$/
+const NAME_PATTERNS = {
+  // Windows service key names: no spaces or quotes.
+  service: /^[A-Za-z0-9_.$-]{1,80}$/,
+  // Network adapter aliases such as "Wi-Fi" or "Ethernet 2". No quotes or metacharacters.
+  adapter: /^[A-Za-z0-9][A-Za-z0-9 _.()#-]{0,63}$/
+} as const
 
 export function isValidHost(v: string): boolean {
   if (typeof v !== 'string' || v.length === 0 || v.length > 253) return false
@@ -38,6 +44,10 @@ export function validateParam(spec: ParamSpec, raw: unknown): { ok: true; value:
       return typeof raw === 'string' && spec.choices.includes(raw)
         ? { ok: true, value: raw }
         : { ok: false, error: `${spec.label}: choose one of ${spec.choices.join(', ')}` }
+    }
+    case 'name': {
+      const v = typeof raw === 'string' ? raw.trim() : ''
+      return NAME_PATTERNS[spec.kind].test(v) ? { ok: true, value: v } : { ok: false, error: `${spec.label}: invalid ${spec.kind} name` }
     }
   }
 }

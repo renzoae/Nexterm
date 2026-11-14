@@ -1,4 +1,4 @@
-import { hostname, userInfo } from 'node:os'
+import { cpus, freemem, hostname, totalmem, uptime, userInfo } from 'node:os'
 import si from 'systeminformation'
 import type { LiveMetrics, ProcessInfo, SystemOverview } from '@shared/types'
 
@@ -36,17 +36,30 @@ export async function getOverview(): Promise<SystemOverview> {
   return value
 }
 
+// Live CPU/memory come from Node's os module: no child processes, so polling
+// costs almost nothing (systeminformation spawns PowerShell for some values).
+let prevCpus = cpus()
+
 export async function getLive(): Promise<LiveMetrics> {
-  const [load, mem] = await Promise.all([si.currentLoad(), si.mem()])
+  const now = cpus()
+  const perCore = now.map((c, i) => {
+    const p = prevCpus[i] ?? c
+    const idle = c.times.idle - p.times.idle
+    const total = Object.values(c.times).reduce((a, b) => a + b, 0) - Object.values(p.times).reduce((a, b) => a + b, 0)
+    return total > 0 ? Math.max(0, Math.min(100, 100 - (idle / total) * 100)) : 0
+  })
+  prevCpus = now
+  const total = totalmem()
+  const free = freemem()
   return {
-    cpuLoad: load.currentLoad,
-    cpuPerCore: load.cpus.map((c) => c.load),
-    memUsed: mem.active,
-    memTotal: mem.total,
-    memAvailable: mem.available,
-    swapUsed: mem.swapused,
-    swapTotal: mem.swaptotal,
-    uptimeSec: Number(si.time().uptime),
+    cpuLoad: perCore.length ? perCore.reduce((a, b) => a + b, 0) / perCore.length : 0,
+    cpuPerCore: perCore,
+    memUsed: total - free,
+    memTotal: total,
+    memAvailable: free,
+    swapUsed: 0,
+    swapTotal: 0,
+    uptimeSec: uptime(),
     ts: Date.now()
   }
 }
@@ -59,14 +72,3 @@ export async function getProcesses(): Promise<ProcessInfo[]> {
     .slice(0, 60)
 }
 
-export function startSystemInfo(): void {
-  if (process.platform === 'win32') {
-    try { si.powerShellStart() } catch { /* optional speed-up */ }
-  }
-}
-
-export function stopSystemInfo(): void {
-  if (process.platform === 'win32') {
-    try { si.powerShellRelease() } catch { /* ignore */ }
-  }
-}

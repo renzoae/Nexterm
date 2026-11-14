@@ -6,7 +6,8 @@ import { isElevated } from '../services/admin'
 import { detectDevTools } from '../services/devtools'
 import { getDomainStatus } from '../services/domain'
 import { cancelRun, runCommand, runElevated } from '../services/executor'
-import { launchRdp, launchTool, listTools, openExternalSafe } from '../services/launcher'
+import { launchRdp, launchTool, listTools, openExternalSafe, openSetting } from '../services/launcher'
+import { diagnose, generateReport, getHistory as getTroubleHistory, healthSummary, saveReport } from '../services/troubleshoot'
 import { logActivity, logDir, readLog } from '../services/logger'
 import { getNetworkOverview } from '../services/network'
 import { getHistory, listProfiles, pickKeyFile, removeProfile, saveProfile } from '../services/ssh-store'
@@ -121,6 +122,15 @@ export function registerIpc(): void {
 
   handle(CH.clipRead, z.tuple([]), () => clipboard.readText())
   handle(CH.clipWrite, z.tuple([z.string().max(10 * 1024 * 1024)]), (_e, [text]) => clipboard.writeText(text))
+
+  // Guided troubleshooting: read-only diagnostics. Repairs go through cmd:run (registry + confirmation).
+  const diagId = z.enum(['network', 'slow', 'update', 'sound', 'disk', 'hang', 'startup', 'printer', 'services'])
+  handle(CH.diagRun, z.tuple([diagId, z.array(id).max(20)]), (_e, [d, after]) => diagnose(d, after))
+  handle(CH.diagHistory, z.tuple([]), () => getTroubleHistory())
+  handle(CH.healthSummary, z.tuple([]), () => healthSummary())
+  handle(CH.settingsOpen, z.tuple([id]), (_e, [sid]) => openSetting(sid))
+  handle(CH.reportGenerate, z.tuple([z.boolean()]), (_e, [identity]) => generateReport(identity, app.getVersion()))
+  handle(CH.reportSave, z.tuple([z.string().max(5 * 1024 * 1024)]), (e, [text]) => saveReport(e.sender, text))
 
   logActivity('command', 'NEXTERM started', 'ok')
 }

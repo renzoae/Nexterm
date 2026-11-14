@@ -1,13 +1,15 @@
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { shell } from 'electron'
+import { app, shell } from 'electron'
+import { SETTINGS } from '@shared/settings-catalog'
 import type { LaunchTool } from '@shared/types'
 import { isValidHost } from '@shared/validation'
 import { logActivity } from './logger'
 import { isWindows, system32 } from './paths'
 
 interface ToolDef extends LaunchTool {
-  target: { file: string } | { uri: string }
+  /** file: opened with ShellExecute. uri: ms-settings and similar. start: fixed command line run via `start` (ShellExecute, supports args and UAC). folder: a known user folder. */
+  target: { file: string } | { uri: string } | { start: string } | { folder: 'downloads' }
 }
 
 // Fixed allow-list of Windows management consoles. The renderer can only send an id.
@@ -26,7 +28,11 @@ const TOOLS: ToolDef[] = [
   { id: 'appwiz', name: 'Programs and Features', description: 'Uninstall or change programs', admin: false, target: { file: 'appwiz.cpl' } },
   { id: 'firewall', name: 'Windows Firewall (Advanced)', description: 'Inbound and outbound rules', admin: true, target: { file: 'wf.msc' } },
   { id: 'sysprops', name: 'System Properties', description: 'Computer name, domain, remote settings', admin: false, target: { file: 'SystemPropertiesAdvanced.exe' } },
-  { id: 'printers', name: 'Printers & Scanners', description: 'Manage printers', admin: false, target: { uri: 'ms-settings:printers' } }
+  { id: 'printers', name: 'Printers & Scanners', description: 'Manage printers', admin: false, target: { uri: 'ms-settings:printers' } },
+  { id: 'taskmgr-startup', name: 'Task Manager: Startup', description: 'Startup programs and their impact', admin: false, target: { start: 'taskmgr.exe /0 /startup' } },
+  { id: 'reliability', name: 'Reliability Monitor', description: 'Crashes and problems over time', admin: false, target: { start: 'perfmon.exe /rel' } },
+  { id: 'cleanmgr', name: 'Disk Cleanup', description: 'Remove temporary and old update files', admin: false, target: { file: 'cleanmgr.exe' } },
+  { id: 'downloads', name: 'Downloads folder', description: 'Your downloaded files', admin: false, target: { folder: 'downloads' } }
 ]
 
 export function listTools(): LaunchTool[] {
@@ -39,6 +45,19 @@ export async function launchTool(id: string): Promise<{ ok: boolean; error?: str
   if (!t) return { ok: false, error: 'Unknown tool' }
   if ('uri' in t.target) {
     await shell.openExternal(t.target.uri)
+    logActivity('launch', t.name, 'opened')
+    return { ok: true }
+  }
+  if ('folder' in t.target) {
+    const err = await shell.openPath(app.getPath(t.target.folder))
+    logActivity('launch', t.name, err ? `error: ${err}` : 'opened')
+    return err ? { ok: false, error: err } : { ok: true }
+  }
+  if ('start' in t.target) {
+    // Constant command line from the table above; never user input.
+    const child = spawn(system32('cmd.exe'), [`/d /c start "" ${t.target.start}`], { windowsVerbatimArguments: true, detached: true, stdio: 'ignore', windowsHide: true })
+    child.on('error', () => undefined)
+    child.unref()
     logActivity('launch', t.name, 'opened')
     return { ok: true }
   }
@@ -70,5 +89,19 @@ export async function openExternalSafe(url: string): Promise<boolean> {
     return true
   } catch {
     return false
+  }
+}
+
+/** Open a Windows Settings page from the catalog. Only catalog ids are accepted. */
+export async function openSetting(id: string): Promise<{ ok: boolean; error?: string }> {
+  if (!isWindows) return { ok: false, error: 'Only available on Windows.' }
+  const entry = SETTINGS.find((x) => x.id === id)
+  if (!entry) return { ok: false, error: 'Unknown setting' }
+  try {
+    await shell.openExternal(entry.uri)
+    logActivity('launch', `Settings: ${entry.title}`, 'opened')
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: (e as Error).message }
   }
 }

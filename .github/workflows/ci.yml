@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'upgrade/**']
   pull_request:
 
 permissions:
@@ -44,4 +44,31 @@ jobs:
           name: nexterm-windows
           path: |
             release/*.exe
+          retention-days: 14
+
+  windows-real:
+    name: Real Windows diagnostics
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Run diagnostics and commands on Windows
+        run: npm run test:windows
+      - name: UI smoke test (screenshots of every page)
+        if: always()
+        run: |
+          npm run build
+          npx electron tests/e2e/shots.cjs screenshots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-audit
+          path: |
+            audit-output/
+            screenshots/
           retention-days: 14

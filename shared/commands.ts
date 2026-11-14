@@ -1,3 +1,4 @@
+import { REPAIRS } from './repairs'
 import type { CategoryId, CommandDef } from './types'
 
 export const CATEGORIES: { id: CategoryId; name: string; description: string }[] = [
@@ -386,7 +387,8 @@ export const COMMANDS: CommandDef[] = [
     exec: { kind: 'exe', file: 'docker.exe', args: ['images'] } }
 ]
 
-const byId = new Map(COMMANDS.map((c) => [c.id, c]))
+// Lookup covers the library commands and the guided-troubleshooting repairs.
+const byId = new Map([...COMMANDS, ...REPAIRS].map((c) => [c.id, c]))
 
 export function getCommand(id: string): CommandDef | undefined {
   return byId.get(id)

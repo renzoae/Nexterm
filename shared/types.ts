@@ -22,6 +22,7 @@ export type ParamSpec =
   | { name: string; label: string; type: 'int'; min: number; max: number; default: number }
   | { name: string; label: string; type: 'drive'; default: string }
   | { name: string; label: string; type: 'choice'; choices: string[]; default: string }
+  | { name: string; label: string; type: 'name'; kind: 'service' | 'adapter'; default?: string }
 
 /**
  * How a command is executed. The renderer never sends executables or raw
@@ -56,6 +57,8 @@ export interface CommandDef {
   requires?: Requirement
   longRunning?: boolean
   timeoutSec?: number
+  /** Present on repair actions used by guided troubleshooting. */
+  repair?: { impact: string; rollback: string | null }
 }
 
 export type ParamValues = Record<string, string | number>

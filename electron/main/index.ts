@@ -2,7 +2,6 @@ import { app, BrowserWindow, nativeTheme, session, shell } from 'electron'
 import { join } from 'node:path'
 import { registerIpc } from '../ipc/register'
 import { cancelAllFor } from '../services/executor'
-import { startSystemInfo, stopSystemInfo } from '../services/system-info'
 import { killAllTerminals } from '../terminal/pty-manager'
 
 // Security baseline: every renderer is sandboxed. The only exception is a
@@ -81,7 +80,6 @@ app.whenReady().then(() => {
   session.defaultSession.setPermissionCheckHandler(() => false)
 
   registerIpc()
-  startSystemInfo()
   createWindow()
 
   app.on('activate', () => {
@@ -91,7 +89,6 @@ app.whenReady().then(() => {
 
 app.on('before-quit', () => {
   killAllTerminals()
-  stopSystemInfo()
 })
 
 app.on('window-all-closed', () => {

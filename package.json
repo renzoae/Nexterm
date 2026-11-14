@@ -13,7 +13,8 @@
     "check": "npm run typecheck && npm run lint && npm run test",
     "dist:win": "npm run build && electron-builder --win --publish never",
     "release:win": "npm run build && electron-builder --win --publish always",
-    "smoke": "npm run build && electron tests/e2e/shots.cjs screenshots"
+    "smoke": "npm run build && electron tests/e2e/shots.cjs screenshots",
+    "test:windows": "vitest run -c vitest.windows.config.mts"
   },
   "author": "NEXTERM contributors",
   "license": "MIT",
