@@ -15,7 +15,17 @@ NEXTERM combines a modern multi-tab terminal with a one-click library of real Wi
 
 ---
 
-## Download
+## Install
+
+**One command** (PowerShell, Windows Terminal or Command Prompt):
+
+```powershell
+powershell -c "irm https://raw.githubusercontent.com/OWNER/nexterm/main/install.ps1 | iex"
+```
+
+This downloads the latest release from GitHub, verifies its SHA-256 checksum, and installs NEXTERM for the current user. No admin rights are needed. You can read the script first: [`install.ps1`](install.ps1).
+
+**Or download manually:**
 
 1. Open the [**Releases**](../../releases) page.
 2. Download one of:
