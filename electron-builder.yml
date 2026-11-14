@@ -1,0 +1,40 @@
+appId: io.github.nexterm.app
+productName: NEXTERM
+copyright: Copyright © NEXTERM contributors. MIT License.
+directories:
+  output: release
+  buildResources: assets
+files:
+  - out/**
+  - assets/**
+  - package.json
+# The pseudo-terminal addon ships prebuilt binaries; they must live outside the asar archive.
+asarUnpack:
+  - node_modules/@lydell/node-pty*/**
+npmRebuild: false
+win:
+  icon: assets/icon.ico
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+  # requestedExecutionLevel stays asInvoker: NEXTERM never elevates itself.
+  requestedExecutionLevel: asInvoker
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: NEXTERM
+  artifactName: NEXTERM-Setup-${version}.${ext}
+  license: LICENSE
+portable:
+  artifactName: NEXTERM-${version}-portable.${ext}
+linux:
+  target: AppImage
+  category: System
+mac:
+  target: dmg
+  category: public.app-category.developer-tools
