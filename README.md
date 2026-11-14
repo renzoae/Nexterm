@@ -20,7 +20,7 @@ NEXTERM combines a modern multi-tab terminal with a one-click library of real Wi
 **One command** (PowerShell, Windows Terminal or Command Prompt):
 
 ```powershell
-powershell -c "irm https://raw.githubusercontent.com/OWNER/nexterm/main/install.ps1 | iex"
+powershell -c "irm https://raw.githubusercontent.com/renzoae/nexterm/main/install.ps1 | iex"
 ```
 
 This downloads the latest release from GitHub, verifies its SHA-256 checksum, and installs NEXTERM for the current user. No admin rights are needed. You can read the script first: [`install.ps1`](install.ps1).
@@ -91,7 +91,7 @@ winget install --id OpenJS.NodeJS.LTS -e
 winget install --id Git.Git -e
 
 # 2. Get the code
-git clone https://github.com/<your-account>/nexterm.git
+git clone https://github.com/renzoae/nexterm.git
 cd nexterm
 npm ci
 

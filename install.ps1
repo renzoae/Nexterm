@@ -1,7 +1,7 @@
 # NEXTERM one-line installer for Windows.
 #
-#   PowerShell:      irm https://raw.githubusercontent.com/OWNER/nexterm/main/install.ps1 | iex
-#   Command Prompt:  powershell -c "irm https://raw.githubusercontent.com/OWNER/nexterm/main/install.ps1 | iex"
+#   PowerShell:      irm https://raw.githubusercontent.com/renzoae/nexterm/main/install.ps1 | iex
+#   Command Prompt:  powershell -c "irm https://raw.githubusercontent.com/renzoae/nexterm/main/install.ps1 | iex"
 #
 # Downloads the latest installer from GitHub Releases, verifies its SHA-256
 # checksum, and installs NEXTERM for the current user (no admin rights needed).
@@ -9,7 +9,7 @@
 & {
     $ErrorActionPreference = 'Stop'
     $ProgressPreference = 'SilentlyContinue'
-    $Repo = 'OWNER/nexterm'
+    $Repo = 'renzoae/nexterm'
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
     Write-Host "Installing NEXTERM from github.com/$Repo" -ForegroundColor Cyan

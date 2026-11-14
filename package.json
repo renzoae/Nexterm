@@ -54,5 +54,13 @@
   "productName": "NEXTERM",
   "engines": {
     "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/renzoae/nexterm.git"
+  },
+  "homepage": "https://github.com/renzoae/nexterm",
+  "bugs": {
+    "url": "https://github.com/renzoae/nexterm/issues"
   }
 }
