@@ -249,3 +249,11 @@ describe('PowerShell 5.1 array wrapping', () => {
     expect(r.findings.find((f) => f.id === 'hangs')?.detail).toMatch(/x.exe/)
   })
 })
+
+describe('PowerShell 5.1 empty results', () => {
+  it('treats {} as an empty list (seen on real Windows)', () => {
+    const r = interpretHang({ notResponding: [], hangs: {}, crashes: {} })
+    expect(r.status).toBe('ok')
+    expect(r.findings.map((f) => f.id)).toEqual(['now', 'history'])
+  })
+})

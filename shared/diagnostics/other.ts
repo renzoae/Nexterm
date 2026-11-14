@@ -138,8 +138,8 @@ export function interpretHang(raw: HangRaw): Interpretation {
   const actions: ActionRef[] = []
   const advice: string[] = []
   const nr = arr(raw.notResponding as { pid: number; name: string; title?: string }[]).filter((p) => p && typeof p.pid === 'number')
-  const hangs = arr(raw.hangs as { app: string; count: number; last: string }[]).filter((h) => h && typeof h === 'object').map((h) => ({ ...h, app: String(h.app ?? 'unknown'), last: String(h.last ?? '') }))
-  const crashes = arr(raw.crashes as { app: string; count: number; last: string; module?: string }[]).filter((c) => c && typeof c === 'object').map((c) => ({ ...c, app: String(c.app ?? 'unknown'), last: String(c.last ?? '') }))
+  const hangs = arr(raw.hangs as { app: string; count: number; last: string }[]).filter((h) => h && typeof h === 'object' && h.app).map((h) => ({ ...h, last: String(h.last ?? '') }))
+  const crashes = arr(raw.crashes as { app: string; count: number; last: string; module?: string }[]).filter((c) => c && typeof c === 'object' && c.app).map((c) => ({ ...c, last: String(c.last ?? '') }))
   if (nr.length) {
     findings.push({ id: 'now', status: 'fail', title: `${nr.length} program(s) not responding right now`, detail: nr.map((p) => p.title || p.name).join(', '), evidence: nr.map((p) => `${p.name} (PID ${p.pid})${p.title ? ` – ${p.title}` : ''}`).join('\n') })
     for (const p of nr.filter((p) => canEnd(p.name)).slice(0, 4)) actions.push({ kind: 'repair', id: 'repair.proc-stop', params: { pid: p.pid }, label: `End ${p.name} (PID ${p.pid})`, reason: 'Closes the frozen program. Unsaved work in it is lost.' })

@@ -86,6 +86,8 @@ export function overallStatus(findings: Finding[]): OverallStatus {
 export function arr<T>(v: T | T[] | null | undefined): T[] {
   if (v === null || v === undefined) return []
   if (Array.isArray(v)) return v
+  // An empty result can arrive as {} from Windows PowerShell 5.1.
+  if (typeof v === 'object' && Object.keys(v as object).length === 0) return []
   // Windows PowerShell 5.1 can wrap arrays as { value: [...], Count: n }.
   const o = v as unknown as { value?: unknown; Count?: unknown }
   if (typeof o === 'object' && Array.isArray(o.value) && typeof o.Count === 'number') return o.value as T[]

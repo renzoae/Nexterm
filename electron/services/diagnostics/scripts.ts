@@ -103,7 +103,8 @@ function Grp($events, $withModule) { @($events | Group-Object { [string]$_.Prope
   [pscustomobject]@{ app = [string]$_.Name; count = [int]$_.Count; last = $when; module = $mod } }) }
 $h = @(Get-WinEvent -FilterHashtable @{ LogName = 'Application'; ProviderName = 'Application Hang'; Id = 1002; StartTime = $since } -MaxEvents 300)
 $c = @(Get-WinEvent -FilterHashtable @{ LogName = 'Application'; ProviderName = 'Application Error'; Id = 1000; StartTime = $since } -MaxEvents 300)
-[pscustomobject]@{ notResponding = $nr; hangs = (Grp $h $false); crashes = (Grp $c $true) } | ConvertTo-Json -Depth 4 -Compress`
+$hangs = @(Grp $h $false); $crashes = @(Grp $c $true)
+[pscustomobject]@{ notResponding = $nr; hangs = $hangs; crashes = $crashes } | ConvertTo-Json -Depth 4 -Compress`
 
 const STARTUP = `${HEAD}
 $approved = @{}
