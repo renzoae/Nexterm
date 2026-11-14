@@ -72,9 +72,13 @@ jobs:
           name: NEXTERM ${{ steps.tag.outputs.name }}
           generate_release_notes: true
           body: |
-            **Install with one command** (PowerShell or Command Prompt):
+            **Install with one command.** PowerShell:
             ```
-            powershell -c "irm https://raw.githubusercontent.com/${{ github.repository }}/main/install.ps1 | iex"
+            iex ((New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/${{ github.repository }}/main/install.ps1'))
+            ```
+            Command Prompt:
+            ```
+            powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol='Tls12'; iex ((New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/${{ github.repository }}/main/install.ps1'))"
             ```
             Or download `NEXTERM-Setup-*.exe` (installer) or `NEXTERM-*-portable.exe` below.
             Builds are not code-signed yet, so Windows SmartScreen may warn: choose **More info › Run anyway**.

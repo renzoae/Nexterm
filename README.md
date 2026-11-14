@@ -17,10 +17,16 @@ NEXTERM combines a modern multi-tab terminal with a one-click library of real Wi
 
 ## Install
 
-**One command** (PowerShell, Windows Terminal or Command Prompt):
+**One command.** In **PowerShell** or Windows Terminal:
 
 ```powershell
-powershell -c "irm https://raw.githubusercontent.com/renzoae/nexterm/main/install.ps1 | iex"
+iex ((New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/renzoae/nexterm/main/install.ps1'))
+```
+
+In **Command Prompt** (cmd):
+
+```bat
+powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol='Tls12'; iex ((New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/renzoae/nexterm/main/install.ps1'))"
 ```
 
 This downloads the latest release from GitHub, verifies its SHA-256 checksum, and installs NEXTERM for the current user. No admin rights are needed. You can read the script first: [`install.ps1`](install.ps1).
