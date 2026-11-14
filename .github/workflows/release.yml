@@ -1,10 +1,10 @@
 name: Release
 
-# Push a tag like v0.1.0 to build the Windows installer and portable .exe
-# and publish them as a free download on the GitHub Releases page.
+# Publish a GitHub release (e.g. tag v0.1.0) to build the Windows installer
+# and portable .exe and attach them to that release as free downloads.
 on:
-  push:
-    tags: ['v*']
+  release:
+    types: [published]
 
 permissions:
   contents: write

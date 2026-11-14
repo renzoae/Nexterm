@@ -109,14 +109,13 @@ No Visual Studio build tools are needed, because the terminal addon (`@lydell/no
 
 ### Publishing a release
 
-Push a version tag and GitHub Actions builds the Windows installer and portable exe, then attaches them to a public release:
+Bump `version` in `package.json`, push, then publish a release on GitHub (Releases › Draft a new release, tag `vX.Y.Z`) or run:
 
 ```bash
-npm version 0.1.0 --no-git-tag-version   # set the version in package.json
-git commit -am "Release 0.1.0"
-git tag v0.1.0
-git push && git push --tags
+gh release create v0.2.0 --target main --generate-notes
 ```
+
+GitHub Actions then builds the Windows installer and portable exe and attaches them, with checksums, to that release.
 
 ---
 
