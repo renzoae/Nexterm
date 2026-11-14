@@ -36,6 +36,7 @@ const TerminalWorkspace = lazy(() => import('@/features/terminal/TerminalWorkspa
 
 export function App() {
   const page = useApp((s) => s.page)
+  const navNonce = useApp((s) => s.navNonce)
   const theme = useSettings((s) => s.theme)
   const mode = useSettings((s) => s.mode)
   const [terminalUsed, setTerminalUsed] = useState(false)
@@ -98,7 +99,7 @@ export function App() {
         <TopBar />
         <main className="relative min-h-0 flex-1">
           {Page && (
-            <div key={page} className="animate-in absolute inset-0 overflow-y-auto p-6">
+            <div key={`${page}-${navNonce}`} className="animate-in absolute inset-0 overflow-y-auto p-6">
               <Suspense fallback={<Spinner className="h-5 w-5 text-accent" />}>
                 <Page />
               </Suspense>

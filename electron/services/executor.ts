@@ -12,7 +12,7 @@ import { confirmAction } from './confirm'
 import { getDomainStatus } from './domain'
 import { logActivity } from './logger'
 import { isWindows, powershellPath, resolveSystemOrPath, system32 } from './paths'
-import { encodePs, psTextArgs } from './powershell'
+import { encodePs, psEnv, psTextArgs } from './powershell'
 
 interface Run {
   child: ChildProcess
@@ -47,7 +47,7 @@ export function startProcess(
   try {
     child = spawn(file, args, {
       cwd: homedir(),
-      env: { ...process.env, ...meta.env },
+      env: file === powershellPath() ? psEnv(meta.env) : { ...process.env, ...meta.env },
       windowsHide: true,
       shell: false,
       stdio: ['ignore', 'pipe', 'pipe']

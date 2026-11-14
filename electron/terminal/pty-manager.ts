@@ -5,6 +5,7 @@ import * as pty from '@lydell/node-pty'
 import { CH } from '@shared/api'
 import type { TerminalCreateResult } from '@shared/types'
 import { logActivity } from '../services/logger'
+import { psEnv } from '../services/powershell'
 import { addHistory, getProfile } from '../services/ssh-store'
 import { detectProfiles, sshExecutable } from './profiles'
 
@@ -15,6 +16,7 @@ interface Session {
 }
 
 const sessions = new Map<string, Session>()
+const TERM_ENV = { TERM: 'xterm-256color', COLORTERM: 'truecolor', TERM_PROGRAM: 'NEXTERM' }
 
 function clampSize(n: number, min: number, max: number, fallback: number): number {
   return Number.isInteger(n) && n >= min && n <= max ? n : fallback
@@ -57,7 +59,8 @@ export async function createTerminal(
       cols,
       rows,
       cwd: homedir(),
-      env: { ...process.env, TERM: 'xterm-256color', COLORTERM: 'truecolor', TERM_PROGRAM: 'NEXTERM' } as Record<string, string>
+      // Windows PowerShell 5.1 must not inherit PowerShell 7's module path.
+      env: (/\\WindowsPowerShell\\/i.test(file) ? psEnv(TERM_ENV) : { ...process.env, ...TERM_ENV }) as Record<string, string>
     })
   } catch (e) {
     return { ok: false, error: `Could not start ${title}: ${(e as Error).message}` }

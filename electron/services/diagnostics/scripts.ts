@@ -98,9 +98,9 @@ $nr = @(Get-Process | Where-Object { $_.MainWindowHandle -ne 0 -and -not $_.Resp
 $since = (Get-Date).AddDays(-7)
 function Grp($events, $withModule) { @($events | Group-Object { [string]$_.Properties[0].Value } | Sort-Object Count -Descending | Select-Object -First 10 | ForEach-Object {
   $l = $_.Group | Sort-Object TimeCreated -Descending | Select-Object -First 1
-  $o = [ordered]@{ app = $_.Name; count = $_.Count; last = $l.TimeCreated.ToUniversalTime().ToString('o') }
-  if ($withModule) { $o.module = [string]$l.Properties[3].Value }
-  [pscustomobject]$o }) }
+  $when = ''; if ($l -and $l.TimeCreated) { $when = $l.TimeCreated.ToUniversalTime().ToString('o') }
+  $mod = ''; if ($withModule -and $l -and $l.Properties.Count -gt 3) { $mod = [string]$l.Properties[3].Value }
+  [pscustomobject]@{ app = [string]$_.Name; count = [int]$_.Count; last = $when; module = $mod } }) }
 $h = @(Get-WinEvent -FilterHashtable @{ LogName = 'Application'; ProviderName = 'Application Hang'; Id = 1002; StartTime = $since } -MaxEvents 300)
 $c = @(Get-WinEvent -FilterHashtable @{ LogName = 'Application'; ProviderName = 'Application Error'; Id = 1000; StartTime = $since } -MaxEvents 300)
 [pscustomobject]@{ notResponding = $nr; hangs = (Grp $h $false); crashes = (Grp $c $true) } | ConvertTo-Json -Depth 4 -Compress`

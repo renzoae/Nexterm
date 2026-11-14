@@ -4,6 +4,17 @@ import { powershellPath } from './paths'
 
 const PRELUDE = "$ProgressPreference='SilentlyContinue';[Console]::OutputEncoding=[System.Text.Encoding]::UTF8;"
 
+/**
+ * Environment for Windows PowerShell 5.1. PSModulePath is removed because a value
+ * inherited from PowerShell 7 makes 5.1 load incompatible modules (for example
+ * Get-ExecutionPolicy fails). 5.1 rebuilds its default path when it is unset.
+ */
+export function psEnv(extra?: Record<string, string>): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env, ...extra }
+  for (const k of Object.keys(env)) if (k.toLowerCase() === 'psmodulepath') delete env[k]
+  return env
+}
+
 export function encodePs(script: string): string {
   return Buffer.from(script, 'utf16le').toString('base64')
 }
@@ -22,7 +33,7 @@ export function runPsJson<T>(script: string, timeoutMs = 30000): Promise<T> {
     execFile(
       powershellPath(),
       ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', encodePs(full)],
-      { timeout: timeoutMs, windowsHide: true, cwd: homedir(), maxBuffer: 16 * 1024 * 1024 },
+      { timeout: timeoutMs, windowsHide: true, cwd: homedir(), maxBuffer: 16 * 1024 * 1024, env: psEnv() },
       (err, stdout, stderr) => {
         if (err && !stdout) return reject(new Error(stderr?.toString().trim() || err.message))
         try {

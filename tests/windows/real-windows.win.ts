@@ -14,7 +14,7 @@ import { defaultParams, substituteArgs, substituteScript } from '@shared/validat
 import { healthSummary, runDiagnosis } from '../../electron/services/diagnostics/runner'
 import { DIAGNOSIS_SCRIPTS } from '../../electron/services/diagnostics/scripts'
 import { powershellPath, resolveSystemOrPath, system32 } from '../../electron/services/paths'
-import { encodePs, psTextArgs } from '../../electron/services/powershell'
+import { encodePs, psEnv, psTextArgs, runPsJson } from '../../electron/services/powershell'
 
 const OUT = join(process.cwd(), 'audit-output')
 mkdirSync(OUT, { recursive: true })
@@ -24,7 +24,7 @@ const commands: { id: string; ok: boolean; exitCode: number | null; ms: number; 
 function run(file: string, args: string[], timeoutMs: number, env?: Record<string, string>): Promise<{ code: number | null; out: string; ms: number }> {
   const start = Date.now()
   return new Promise((resolve) => {
-    execFile(file, args, { timeout: timeoutMs, windowsHide: true, cwd: homedir(), encoding: 'buffer', maxBuffer: 64 * 1024 * 1024, env: { ...process.env, ...env } }, (err, stdout, stderr) => {
+    execFile(file, args, { timeout: timeoutMs, windowsHide: true, cwd: homedir(), encoding: 'buffer', maxBuffer: 64 * 1024 * 1024, env: file === powershellPath() ? psEnv(env) : { ...process.env, ...env } }, (err, stdout, stderr) => {
       const out = decodeOutput(stdout as Buffer) + decodeOutput(stderr as Buffer)
       const code = err ? (typeof (err as NodeJS.ErrnoException & { code?: unknown }).code === 'number' ? ((err as unknown as { code: number }).code) : null) : 0
       resolve({ code, out, ms: Date.now() - start })
@@ -67,6 +67,8 @@ describe.skipIf(process.platform !== 'win32')('real Windows', () => {
   describe('diagnoses run on real Windows', () => {
     const ids: DiagnosisId[] = ['network', 'slow', 'update', 'sound', 'disk', 'hang', 'startup', 'printer', 'services']
     it.each(ids)('%s', async (id) => {
+      const raw = await runPsJson<unknown>(DIAGNOSIS_SCRIPTS[id], 180_000).catch((e: Error) => `ERROR ${e.message}`)
+      console.log(`RAW ${id}: ${JSON.stringify(raw).slice(0, 1500)}`)
       const d = await runDiagnosis(id)
       diagnoses[id] = d
       expect(d.errors, d.errors.join('\n')).toEqual([])

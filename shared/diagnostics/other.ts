@@ -137,9 +137,9 @@ export function interpretHang(raw: HangRaw): Interpretation {
   const findings: Finding[] = []
   const actions: ActionRef[] = []
   const advice: string[] = []
-  const nr = arr(raw.notResponding as { pid: number; name: string; title?: string }[])
-  const hangs = arr(raw.hangs as { app: string; count: number; last: string }[])
-  const crashes = arr(raw.crashes as { app: string; count: number; last: string; module?: string }[])
+  const nr = arr(raw.notResponding as { pid: number; name: string; title?: string }[]).filter((p) => p && typeof p.pid === 'number')
+  const hangs = arr(raw.hangs as { app: string; count: number; last: string }[]).filter((h) => h && typeof h === 'object').map((h) => ({ ...h, app: String(h.app ?? 'unknown'), last: String(h.last ?? '') }))
+  const crashes = arr(raw.crashes as { app: string; count: number; last: string; module?: string }[]).filter((c) => c && typeof c === 'object').map((c) => ({ ...c, app: String(c.app ?? 'unknown'), last: String(c.last ?? '') }))
   if (nr.length) {
     findings.push({ id: 'now', status: 'fail', title: `${nr.length} program(s) not responding right now`, detail: nr.map((p) => p.title || p.name).join(', '), evidence: nr.map((p) => `${p.name} (PID ${p.pid})${p.title ? ` – ${p.title}` : ''}`).join('\n') })
     for (const p of nr.filter((p) => canEnd(p.name)).slice(0, 4)) actions.push({ kind: 'repair', id: 'repair.proc-stop', params: { pid: p.pid }, label: `End ${p.name} (PID ${p.pid})`, reason: 'Closes the frozen program. Unsaved work in it is lost.' })
@@ -258,7 +258,7 @@ export function interpretServices(raw: ServicesRaw): Interpretation {
   const actions: ActionRef[] = []
   const advice: string[] = []
   const stopped = arr(raw.stopped as { name: string; display: string; exitCode: number }[])
-  const events = arr(raw.events as { service: string; count: number; last: string; ids: string; message: string }[])
+  const events = arr(raw.events as { service: string; count: number; last: string; ids: string; message: string }[]).map((e) => ({ ...e, last: String(e.last ?? ''), message: String(e.message ?? '') }))
   const failed = stopped.filter((s) => !BENIGN_EXIT.has(Number(s.exitCode)))
   const benign = stopped.filter((s) => BENIGN_EXIT.has(Number(s.exitCode)))
   if (failed.length) {
@@ -267,7 +267,8 @@ export function interpretServices(raw: ServicesRaw): Interpretation {
   } else findings.push({ id: 'failed', status: 'ok', title: 'No automatic service has failed', detail: 'All services that should run either run or stopped normally.' })
   if (benign.length) findings.push({ id: 'benign', status: 'info', title: `${benign.length} automatic service(s) stopped normally`, detail: 'These start on demand and stop when idle. This is expected.', evidence: benign.map((s) => s.display).join('\n') })
   if (events.length) {
-    findings.push({ id: 'events', status: 'warn', title: 'Service errors in the last 7 days', detail: events.slice(0, 5).map((e) => `${e.service} (${e.count}×)`).join(', '), evidence: events.slice(0, 10).map((e) => `${e.service}: ${e.count} event(s) [${e.ids}], last ${e.last.slice(0, 16).replace('T', ' ')}\n  ${e.message}`).join('\n') })
+    const total = events.reduce((n, e) => n + (Number(e.count) || 0), 0)
+    findings.push({ id: 'events', status: total >= 3 || events.some((e) => e.count >= 2) ? 'warn' : 'info', title: 'Service errors in the last 7 days', detail: events.slice(0, 5).map((e) => `${e.service} (${e.count}×)`).join(', '), evidence: events.slice(0, 10).map((e) => `${e.service}: ${e.count} event(s) [${e.ids}], last ${e.last.slice(0, 16).replace('T', ' ')}\n  ${e.message}`).join('\n') })
   }
   actions.push({ kind: 'tool', id: 'services', reason: 'See and configure all services.' })
   actions.push({ kind: 'tool', id: 'eventvwr', reason: 'Full error details in Event Viewer.' })

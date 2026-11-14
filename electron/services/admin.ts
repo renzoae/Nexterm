@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
 import { isWindows, powershellPath } from './paths'
-import { encodePs } from './powershell'
+import { encodePs, psEnv } from './powershell'
 
 let cached: Promise<boolean> | null = null
 
@@ -17,7 +17,7 @@ export function isElevated(): Promise<boolean> {
     execFile(
       powershellPath(),
       ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', encodePs(script)],
-      { timeout: 15000, windowsHide: true },
+      { timeout: 15000, windowsHide: true, env: psEnv() },
       (err, stdout) => resolve(!err && stdout.toString().trim().toLowerCase() === 'true')
     )
   })
