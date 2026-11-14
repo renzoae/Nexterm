@@ -1,32 +1,84 @@
 name: Release
 
-# Publish a GitHub release (e.g. tag v0.1.0) to build the Windows installer
-# and portable .exe and attach them to that release as free downloads.
+# Builds the Windows installer and portable .exe and publishes them on the
+# GitHub Releases page as free downloads.
+#
+# Runs automatically when the version in package.json changes on main
+# (a release v<version> is created if it does not exist yet), when a release
+# is published manually on GitHub, or from the Actions tab.
 on:
+  push:
+    branches: [main]
+    paths: ['package.json', '.github/workflows/release.yml']
   release:
     types: [published]
+  workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   release:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Decide tag
+        id: tag
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "name=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          tag="v$(node -p "require('./package.json').version")"
+          echo "name=$tag" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+            echo "Release $tag already exists; nothing to do."
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/setup-node@v4
+        if: steps.tag.outputs.build == 'true'
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
-      - run: npm run check
-      - run: npm run dist:win
+      - if: steps.tag.outputs.build == 'true'
+        run: npm ci
+      - if: steps.tag.outputs.build == 'true'
+        run: npm run check
+      - if: steps.tag.outputs.build == 'true'
+        run: npm run dist:win
+
       - name: Checksums
+        if: steps.tag.outputs.build == 'true'
         shell: pwsh
         run: Get-ChildItem release/*.exe | ForEach-Object { "$((Get-FileHash $_ -Algorithm SHA256).Hash)  $($_.Name)" } | Out-File release/SHA256SUMS.txt -Encoding ascii
+
       - uses: softprops/action-gh-release@v2
+        if: steps.tag.outputs.build == 'true'
         with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          target_commitish: ${{ github.sha }}
+          name: NEXTERM ${{ steps.tag.outputs.name }}
+          generate_release_notes: true
+          body: |
+            **Install with one command** (PowerShell or Command Prompt):
+            ```
+            powershell -c "irm https://raw.githubusercontent.com/${{ github.repository }}/main/install.ps1 | iex"
+            ```
+            Or download `NEXTERM-Setup-*.exe` (installer) or `NEXTERM-*-portable.exe` below.
+            Builds are not code-signed yet, so Windows SmartScreen may warn: choose **More info › Run anyway**.
+            Verify downloads with `SHA256SUMS.txt`.
           files: |
             release/*.exe
             release/SHA256SUMS.txt
-          generate_release_notes: true
